@@ -107,11 +107,12 @@
 
 
 
-from django.shortcuts import render
-from django.views.generic import ListView, TemplateView, DetailView
+from django.shortcuts import redirect, render
+from django.views.generic import ListView, TemplateView, DetailView, View
 from django.utils import timezone
 from datetime import timedelta
 from .models import Category, Post, Tag
+from newspaper.forms import CommentForm
 
 
 class HomeView(ListView):
@@ -181,7 +182,7 @@ class PostbyTagView(ListView):
     model = Post
     template_name = "aznews/list/list.html"
     context_object_name = "posts"
-    paginate_by = 10
+    paginate_by = 1
 
     def get_queryset(self):
         query = super().get_queryset()
@@ -223,10 +224,26 @@ class PostDetailView(DetailView):
                 published_at__isnull=False, status="active", id__gt=obj.id
             )
             .order_by("id")
-            .filter
+            .first()
         )
 
         return context
+    
+class CommentView(View):
+    def post(self, request, *args, **kwargs):
+        form = CommentForm(request.POST)
+        post_id = request.POST["post"]
+        if form.is_valid():
+            form.save()
+            return redirect("post-detail", post_id)
+        
+        post = Post.objects.get(pk=post_id)
+        return render(
+            request,
+            "aznews/detail/detail.html",
+            {"post":post,"form":form},
+        )
+
 
 
 
